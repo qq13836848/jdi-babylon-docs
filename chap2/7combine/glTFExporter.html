@@ -24,10 +24,14 @@
     <script src="../../lib/babylon.js"></script>
     <script src="../../lib/babylonjs.loaders.min.js"></script>
     <script src="../../lib/pep.js"></script>
+    <script src="../../lib/babylonjs.serializers.min.js"></script>
   </head>
 
   <body>
     <canvas id="renderCanvas" touch-action="none"></canvas>
+    <button style="position: absolute; top: 10px; left: 10px" id="export">
+      export glb
+    </button>
     <!-- touch-action="none" for best results from PEP -->
 
     <script>
@@ -51,20 +55,58 @@
           "light",
           new BABYLON.Vector3(1, 1, 0)
         );
-        // color
+
+        const box = buildBox();
+
+        const roof = buildRoof();
+
+        const ground = buildGround();
+
+        const house = BABYLON.Mesh.MergeMeshes(
+          [box, roof],
+          true,
+          false,
+          null,
+          false,
+          true
+        );
+
+        return scene;
+      };
+
+      const buildGround = () => {
         const groundMat = new BABYLON.StandardMaterial("groundMat");
         groundMat.diffuseColor = new BABYLON.Color3(0, 1, 0);
+        const ground = BABYLON.MeshBuilder.CreateGround("ground", {
+          width: 10,
+          height: 10
+        });
+        ground.material = groundMat;
+        return ground;
+      };
 
-        // texture
-        const roofMat = new BABYLON.StandardMaterial("roofMat");
-        roofMat.diffuseTexture = new BABYLON.Texture("./roof.jpg");
+      const buildBox = () => {
         const boxMat = new BABYLON.StandardMaterial("boxMat");
-        boxMat.diffuseTexture = new BABYLON.Texture("./floor.png");
+        boxMat.diffuseTexture = new BABYLON.Texture("../cubehouse.png");
 
-        const box = BABYLON.MeshBuilder.CreateBox("box", {});
+        const faceUV = [];
+        faceUV[0] = new BABYLON.Vector4(0.5, 0.0, 0.75, 1.0); // rear face
+        faceUV[1] = new BABYLON.Vector4(0.0, 0.0, 0.25, 1.0); // front face
+        faceUV[2] = new BABYLON.Vector4(0.25, 0.5, 0.5, 1.0); // right side
+        faceUV[3] = new BABYLON.Vector4(0.75, 0.0, 1.0, 1.0); // left side
+
+        const box = BABYLON.MeshBuilder.CreateBox("box", {
+          faceUV,
+          wrap: true
+        });
         box.material = boxMat;
         box.position.y = 0.5;
+        return box;
+      };
 
+      const buildRoof = () => {
+        const roofMat = new BABYLON.StandardMaterial("roofMat");
+        roofMat.diffuseTexture = new BABYLON.Texture("../roof.jpg");
         const roof = BABYLON.MeshBuilder.CreateCylinder("roof", {
           diameter: 1.3,
           height: 1.2,
@@ -74,14 +116,7 @@
         roof.scaling.x = 0.75;
         roof.rotation.z = Math.PI / 2;
         roof.position.y = 1.22;
-
-        const ground = BABYLON.MeshBuilder.CreateGround("ground", {
-          width: 10,
-          height: 10
-        });
-        ground.material = groundMat;
-
-        return scene;
+        return roof;
       };
 
       const scene = createScene(); //Call the createScene function
@@ -89,6 +124,12 @@
       // Register a render loop to repeatedly render the scene
       engine.runRenderLoop(function () {
         scene.render();
+      });
+
+      document.querySelector("#export").addEventListener("click", () => {
+        BABYLON.GLTF2Export.GLBAsync(scene, "village").then((glb) => {
+          glb.downloadFiles();
+        });
       });
 
       // Watch for browser/canvas resize events
